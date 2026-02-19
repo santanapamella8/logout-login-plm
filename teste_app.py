@@ -3,7 +3,8 @@ from appium.options.android import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import os
+from selenium.common.exceptions import TimeoutException
+import time
 
 # ===== CONFIGURAÇÃO =====
 options = UiAutomator2Options()
@@ -15,80 +16,104 @@ options.no_reset = True
 options.full_reset = False
 
 driver = webdriver.Remote("http://localhost:4723", options=options)
-wait = WebDriverWait(driver, 10)
+wait = WebDriverWait(driver, 15)
 
-# ===== SCROLL ATÉ LOGOUT =====
-logout_btn = wait.until(
-    EC.presence_of_element_located(
-        (AppiumBy.ANDROID_UIAUTOMATOR,
-         'new UiScrollable(new UiSelector().scrollable(true))'
-         '.scrollIntoView(new UiSelector().text("Logout"));')
+try:
+    # ==============================
+    # ===== LOGOUT (SE ESTIVER LOGADO)
+    # ==============================
+    try:
+        logout_btn = wait.until(
+            EC.presence_of_element_located(
+                (AppiumBy.ANDROID_UIAUTOMATOR,
+                 'new UiScrollable(new UiSelector().scrollable(true))'
+                 '.scrollIntoView(new UiSelector().text("Logout"));')
+            )
+        )
+
+        driver.execute_script("mobile: longClickGesture", {
+            "elementId": logout_btn.id,
+            "duration": 1500
+        })
+
+        # Confirma logout
+        wait.until(
+            EC.element_to_be_clickable(
+                (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("OK")')
+            )
+        ).click()
+
+        wait.until(
+            EC.element_to_be_clickable(
+                (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("OK")')
+            )
+        ).click()
+
+        print("Logout realizado com sucesso.")
+
+    except TimeoutException:
+        print("Usuário já estava deslogado.")
+
+    # ==============================
+    # ===== LOGIN
+    # ==============================
+
+    # 🔐 ALTERE AQUI QUANDO QUISER
+    usuario = "pamella"
+    senha = "Pamella@1234"
+
+    # Aguarda campos de login
+    campos = wait.until(
+        EC.presence_of_all_elements_located(
+            (AppiumBy.CLASS_NAME, "android.widget.EditText")
+        )
     )
-)
 
-# ===== LOGOUT (long press) =====
-driver.execute_script("mobile: longClickGesture", {
-    "elementId": logout_btn.id,
-    "duration": 1500
-})
+    if len(campos) < 2:
+        raise Exception("Campos de login não encontrados.")
 
-# ===== OK - Confirma logout =====
-wait.until(
-    EC.element_to_be_clickable(
-        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("OK")')
-    )
-).click()
+    campos[0].clear()
+    campos[0].send_keys(usuario)
 
-# ===== OK - Usuario deslogado =====
-wait.until(
-    EC.element_to_be_clickable(
-        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("OK")')
-    )
-).click()
+    campos[1].clear()
+    campos[1].send_keys(senha)
 
-print("Logout realizado com sucesso.")
+    # Clicar em Entrar
+    wait.until(
+        EC.element_to_be_clickable(
+            (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("Entrar")')
+        )
+    ).click()
 
-# ===== LOGIN =====
+    # ==============================
+    # ===== LOGIN OFFLINE (se aparecer)
+    # ==============================
+    try:
+        wait.until(
+            EC.element_to_be_clickable(
+                (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("NÃO")')
+            )
+        ).click()
+        print("Login offline recusado.")
+    except TimeoutException:
+        pass
 
-# 🔐 Pegando usuário e senha das variáveis de ambiente
-usuario = os.getenv("PLM_USER")
-senha = os.getenv("PLM_PASS")
+    # ==============================
+    # ===== SELECIONAR UNIDADE
+    # ==============================
+    wait.until(
+        EC.element_to_be_clickable(
+            (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("47-PRODUCAO ZARUC")')
+        )
+    ).click()
 
-if not usuario or not senha:
-    raise Exception("Variáveis PLM_USER e PLM_PASS não configuradas.")
+    print("Login realizado com sucesso!")
 
-campos = wait.until(
-    EC.presence_of_all_elements_located(
-        (AppiumBy.CLASS_NAME, "android.widget.EditText")
-    )
-)
+except Exception as e:
+    print("Erro durante execução:", e)
+    driver.save_screenshot("erro_login.png")
+    print("Print salvo como erro_login.png")
 
-campos[0].clear()
-campos[0].send_keys(usuario)
-
-campos[1].clear()
-campos[1].send_keys(senha)
-
-wait.until(
-    EC.element_to_be_clickable(
-        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("Entrar")')
-    )
-).click()
-
-# ===== NÃO - Login Offline =====
-wait.until(
-    EC.element_to_be_clickable(
-        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("NÃO")')
-    )
-).click()
-
-# ===== Selecionar Unidade =====
-wait.until(
-    EC.element_to_be_clickable(
-        (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("47-PRODUCAO ZARUC")')
-    )
-).click()
-
-print("Login realizado com sucesso!")
-
-driver.quit()
+finally:
+    time.sleep(2)
+    driver.quit()
