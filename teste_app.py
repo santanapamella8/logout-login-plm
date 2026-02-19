@@ -3,6 +3,7 @@ from appium.options.android import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
 
 # ===== CONFIGURAÇÃO =====
 options = UiAutomator2Options()
@@ -25,10 +26,10 @@ logout_btn = wait.until(
     )
 )
 
-# ===== LOGOUT (long press mais rápido) =====
+# ===== LOGOUT (long press) =====
 driver.execute_script("mobile: longClickGesture", {
     "elementId": logout_btn.id,
-    "duration": 1500   # 1.5 segundos (mais rápido que 2s)
+    "duration": 1500
 })
 
 # ===== OK - Confirma logout =====
@@ -49,6 +50,13 @@ print("Logout realizado com sucesso.")
 
 # ===== LOGIN =====
 
+# 🔐 Pegando usuário e senha das variáveis de ambiente
+usuario = os.getenv("PLM_USER")
+senha = os.getenv("PLM_PASS")
+
+if not usuario or not senha:
+    raise Exception("Variáveis PLM_USER e PLM_PASS não configuradas.")
+
 campos = wait.until(
     EC.presence_of_all_elements_located(
         (AppiumBy.CLASS_NAME, "android.widget.EditText")
@@ -56,10 +64,10 @@ campos = wait.until(
 )
 
 campos[0].clear()
-campos[0].send_keys("zaruc")
+campos[0].send_keys(usuario)
 
 campos[1].clear()
-campos[1].send_keys("@MEDIDOREz2025#")
+campos[1].send_keys(senha)
 
 wait.until(
     EC.element_to_be_clickable(
