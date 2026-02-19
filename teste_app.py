@@ -59,8 +59,8 @@ try:
     # ==============================
 
     # 🔐 ALTERE AQUI QUANDO QUISER
-    usuario = "pamella"
-    senha = "Pamella@1234"
+    usuario = "seu_usuario"
+    senha = "sua_senha"
 
     # Aguarda campos de login
     campos = wait.until(
